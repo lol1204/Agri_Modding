@@ -80,7 +80,10 @@ export function findAlternatives(
       const overlap = ex.primary.filter((m) => exercise.primary.includes(m)).length;
       score += overlap * 2;
       if (ex.category === exercise.category) score += 1;
+      // Gleiche Belastungsart (Gewicht vs. Körpergewicht) und gleiches Gerät bevorzugen
       if (ex.bodyweight === exercise.bodyweight) score += 0.5;
+      else score -= 2;
+      if (ex.equipment === exercise.equipment) score += 1;
       score -= Math.abs(ex.difficulty - exercise.difficulty) * 0.5;
       return { ex, score };
     })

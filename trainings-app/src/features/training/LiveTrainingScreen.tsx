@@ -74,7 +74,7 @@ function LiveTraining({ workout }: { workout: Workout }) {
   const insets = useSafeAreaInsets();
   const { sets: allSets, profile } = useData();
   const catalog = useExercises();
-  const { showToast, setPlacement } = useToast();
+  const { showToast, hideToast, setPlacement } = useToast();
   const [live, setLive] = useLiveState(workout.id);
   const now = useNow(1000);
   const unit = profile.unit;
@@ -170,8 +170,11 @@ function LiveTraining({ workout }: { workout: Workout }) {
   useEffect(() => {
     // Hinweise oben anzeigen, damit Gewicht und Wiederholungen frei bleiben.
     setPlacement('top');
-    return () => setPlacement('bottom');
-  }, [setPlacement]);
+    return () => {
+      hideToast();
+      setPlacement('bottom');
+    };
+  }, [setPlacement, hideToast]);
   // Beim ersten Öffnen: aktuelle Übung merken
   useEffect(() => {
     if (!live.currentItemId && item) setLive({ currentItemId: item.id });
