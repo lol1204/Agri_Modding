@@ -235,6 +235,7 @@ function LiveTraining({ workout }: { workout: Workout }) {
     showToast({
       message: type === 'drop' ? 'Dropsatz gespeichert' : 'Satz gespeichert',
       actionLabel: 'Rückgängig',
+      duration: 3500,
       onAction: () => {
         removeSet(entry);
         setLive({ currentItemId: prevLive.currentItemId ?? item.id, restEndsAt: prevLive.restEndsAt, restTotalSec: prevLive.restTotalSec, dropOf: prevLive.dropOf });

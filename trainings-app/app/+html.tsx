@@ -20,7 +20,8 @@ body {
   color: ${colors.text};
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
-input, textarea, select { font-size: ${inputFontSize}px !important; }
+/* Mindestens 17 px – sonst zoomt iOS beim Tippen hinein. Komponenten setzen größere Werte selbst. */
+input, textarea, select { font-size: ${inputFontSize}px; }
 * { -webkit-touch-callout: none; }
 input, textarea { -webkit-user-select: text; user-select: text; }
 `;
