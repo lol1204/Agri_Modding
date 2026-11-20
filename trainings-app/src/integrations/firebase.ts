@@ -42,20 +42,31 @@ function getFirebaseApp(): Promise<FirebaseApp> {
   return appPromise;
 }
 
+/** Firestore-Modul (Funktionen wie doc, setDoc …), ebenfalls nachgeladen. */
+export function loadFirestoreModule(): Promise<typeof import('firebase/firestore')> {
+  return import('firebase/firestore');
+}
+
 /** Firestore mit Offline-Cache im Browser (IndexedDB), auch über mehrere Tabs. */
 export function getDb(): Promise<Firestore> {
-  dbPromise ??= Promise.all([getFirebaseApp(), import('firebase/firestore')]).then(
+  dbPromise ??= Promise.all([getFirebaseApp(), loadFirestoreModule()]).then(
     ([app, { initializeFirestore, persistentLocalCache, persistentMultipleTabManager }]) =>
       initializeFirestore(app, {
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+        ignoreUndefinedProperties: true,
       }),
   );
   return dbPromise;
 }
 
+/** Auth-Modul (signInWithEmailAndPassword …), nachgeladen. */
+export function loadAuthModule(): Promise<typeof import('firebase/auth')> {
+  return import('firebase/auth');
+}
+
 /** Firebase Authentication; der Login bleibt im Browser gespeichert (auch offline). */
 export function getFirebaseAuth(): Promise<Auth> {
-  authPromise ??= Promise.all([getFirebaseApp(), import('firebase/auth')]).then(
+  authPromise ??= Promise.all([getFirebaseApp(), loadAuthModule()]).then(
     ([app, { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence }]) => {
       const auth = initializeAuth(app, {
         persistence: [indexedDBLocalPersistence, browserLocalPersistence],
