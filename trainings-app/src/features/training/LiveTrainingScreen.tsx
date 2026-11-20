@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { goHome } from '../navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,11 +31,12 @@ import { dataStore, useData } from '@/db/store';
 import { setTypeLabels } from '@/domain/labels';
 import type { Exercise, SessionItem, SetEntry, SetType, Workout } from '@/domain/types';
 import { formatClock } from '@/engine/dates';
-import { findAlternatives, isDropFriendly } from '@/engine/exercises';
+import { findAlternatives } from '@/engine/exercises';
 import { loadProfileFor, roundToAchievable, stepDown, stepUp } from '@/engine/loading';
 import { previousSessionSets } from '@/engine/prefill';
 import { hardSetCount, isHardSet, isItemComplete, nextItemId, restSeconds, setsForItem, shouldRestAfter } from '@/engine/session';
 import { formatWeight, kgToUnit, unitToKg } from '@/engine/units';
+import { detectStagnation, shouldSuggestDrop } from '@/engine/weightAssistant';
 import { keepScreenOn } from '@/integrations/wakeLock';
 import { colors, layout, radii, spacing, touch } from '@/theme';
 import { Badge } from '../uebungen/ExerciseCard';
@@ -55,7 +57,7 @@ export function LiveTrainingScreen() {
         <AppText color="textMuted" align="center">
           Dieses Training ist schon beendet.
         </AppText>
-        <Button title="Zur Startseite" onPress={() => router.replace('/')} />
+        <Button title="Zur Startseite" onPress={() => goHome()} />
       </View>
     );
   }
@@ -98,6 +100,16 @@ function LiveTraining({ workout }: { workout: Workout }) {
   const olderPrevious = useOlderPrevious(exercise?.id, workout.id, recentPrevious.length === 0);
   const previousSets = recentPrevious.length ? recentPrevious : olderPrevious;
   const history = useMemo(() => (exercise ? allSets.filter((s) => s.exerciseId === exercise.id) : []), [allSets, exercise]);
+  const { workouts } = useData();
+  const stagnating = useMemo(() => {
+    if (!exercise) return false;
+    const series = workouts
+      .filter((w) => w.status === 'beendet' && w.summary)
+      .sort((a, b) => a.startedAt - b.startedAt)
+      .map((w) => w.summary?.exercises.find((e) => e.exerciseId === exercise.id)?.e1rmKg ?? 0)
+      .filter((v) => v > 0);
+    return detectStagnation(series);
+  }, [workouts, exercise]);
 
   const loadProfile = exercise ? loadProfileFor(exercise, profile.equipment) : null;
   const dropParent = live.dropOf ? sets.find((s) => s.id === live.dropOf) : undefined;
@@ -172,6 +184,13 @@ function LiveTraining({ workout }: { workout: Workout }) {
 
   // ---------- Aktionen ----------
 
+  // Welcher Vorschlag galt für diesen Satz? (Aufwärmen übersprungen → Arbeitsgewicht)
+  const suggestedForCommit = (type: SetType): number | null => {
+    if (!proposal || type === 'warmup' || type === 'drop' || proposal.feeler) return null;
+    return proposal.type === 'warmup' ? proposal.workingKg : proposal.suggestedKg;
+  };
+  const whyText = proposal ? (proposal.type === 'warmup' && setType !== 'warmup' ? proposal.workingWhy : proposal.why) : null;
+
   const commit = (rir: number | null) => {
     if (!item || !exercise) return;
     const type: SetType = inDrop ? 'drop' : setType;
@@ -184,7 +203,7 @@ function LiveTraining({ workout }: { workout: Workout }) {
       reps,
       rir: type === 'drop' ? null : rir,
       painFlag: pain,
-      suggestedKg: proposal?.suggestedKg ?? null,
+      suggestedKg: suggestedForCommit(type),
       dropOf: inDrop ? (dropParent?.id ?? null) : null,
     });
     const newSets = [...sets, entry];
@@ -254,7 +273,7 @@ function LiveTraining({ workout }: { workout: Workout }) {
     setFinishOpen(false);
     clearLiveState(workout.id);
     discardWorkout(workout.id);
-    router.replace('/');
+    goHome();
   };
 
   const addExercise = () => {
@@ -284,6 +303,16 @@ function LiveTraining({ workout }: { workout: Workout }) {
       : `Satz ${doneHard + 1}${item ? ` von ${item.targetSets}` : ''}`;
   const isBarbell = loadProfile?.kind === 'barbell';
   const canDrop = !!exercise && !exercise.bodyweight && itemSets.some((s) => isHardSet(s.type));
+  const lastDropAt = history.filter((s) => s.type === 'drop' && s.workoutId !== workout.id).reduce<number | null>((m, s) => (m === null || s.performedAt > m ? s.performedAt : m), null);
+  const dropSuggested = !!exercise && shouldSuggestDrop({ exercise, readiness: workout.readiness ?? null, lastDropAt, now });
+  const changeType = (t: SetType) => {
+    // Aufwärmen überspringen → direkt mit dem Arbeitsgewicht starten
+    if (proposal && proposal.type === 'warmup' && t !== 'warmup') {
+      setWeightKg(proposal.workingKg);
+      setReps(proposal.workingReps);
+    }
+    setSetType(t);
+  };
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]} testID="screen-training">
@@ -347,6 +376,18 @@ function LiveTraining({ workout }: { workout: Workout }) {
               />
             ) : null}
 
+            {proposal && proposal.warmups.length > 0 && doneHard === 0 ? (
+              <AppText variant="small" color="setWarmup" tabular testID="training-aufwaermen">
+                Aufwärmen:{' '}
+                {proposal.warmups.map((w) => `${formatWeight(w.weightKg, unit, false)} × ${w.reps}`).join(' · ')} – dann {formatWeight(proposal.workingKg, unit)}
+              </AppText>
+            ) : null}
+            {stagnating && itemSets.length === 0 ? (
+              <AppText variant="small" color="textFaint">
+                Seit ein paar Trainings kein neuer Bestwert – das ist normal. Eine leichtere Woche (Deload) oder ein Übungswechsel kann helfen.
+              </AppText>
+            ) : null}
+
             {/* Erledigte Sätze */}
             {itemSets.length ? (
               <View style={styles.doneList}>
@@ -377,6 +418,11 @@ function LiveTraining({ workout }: { workout: Workout }) {
                   <Icon name="check" color="accent" />
                   <AppText variant="heading">Übung erledigt</AppText>
                 </View>
+                {canDrop && dropSuggested ? (
+                  <AppText variant="small" color="setDrop">
+                    Tipp: Ein Dropsatz passt hier gut – optional.
+                  </AppText>
+                ) : null}
                 {allDone ? (
                   <AppText color="textMuted">Alle Übungen geschafft. Stark!</AppText>
                 ) : nextItem ? (
@@ -391,7 +437,7 @@ function LiveTraining({ workout }: { workout: Workout }) {
                   </AppText>
                   {inDrop ? <InfoTerm term="dropsatz" /> : null}
                 </View>
-                {!inDrop ? <ChipGroup options={typeOptions} value={setType} onChange={setSetType} scroll /> : null}
+                {!inDrop ? <ChipGroup options={typeOptions} value={setType} onChange={changeType} scroll testIDPrefix="satztyp" /> : null}
                 <Stepper
                   value={kgToUnit(weightKg, unit)}
                   onChange={(v) => setWeightKg(unitToKg(v, unit))}
@@ -412,11 +458,11 @@ function LiveTraining({ workout }: { workout: Workout }) {
                     <InfoTerm term="tastsatz" />
                   </View>
                 ) : null}
-                {proposal?.why && !inDrop ? (
+                {proposal && whyText && !inDrop ? (
                   <PressableScale onPress={() => setShowWhy(!showWhy)} style={styles.whyRow} accessibilityRole="button" accessibilityLabel="Warum dieser Vorschlag?" testID="training-warum">
-                    <Icon name="sparkle" size={16} color="accent" />
-                    <AppText variant="small" color="textMuted" style={styles.flex}>
-                      {showWhy ? proposal.why : 'Vorschlag des Assistenten · Warum?'}
+                    <Icon name={actionIcon(proposal.action)} size={16} color="accent" />
+                    <AppText variant="small" color="textMuted" style={styles.flex} testID="training-warum-text">
+                      {showWhy ? whyText : `${actionLabel(proposal.action)} · Warum?`}
                     </AppText>
                   </PressableScale>
                 ) : null}
@@ -467,7 +513,7 @@ function LiveTraining({ workout }: { workout: Workout }) {
             <Button title={setType === 'warmup' ? 'Aufwärmsatz fertig' : 'Satz fertig'} size="lg" icon="check" onPress={onMain} testID="training-satz-fertig" />
             <View style={styles.navRow}>
               <IconButton icon="chevronLeft" label="Vorherige Übung" disabled={!neighbors.prev} onPress={() => neighbors.prev && goTo(neighbors.prev.id)} />
-              {canDrop && isDropFriendly(exercise) && doneHard >= item.targetSets - 1 ? (
+              {canDrop && dropSuggested && doneHard >= item.targetSets - 1 ? (
                 <PressableScale onPress={startDrop} style={styles.navCenter} accessibilityRole="button" accessibilityLabel="Dropsatz anhängen">
                   <AppText variant="label" color="setDrop">
                     + Dropsatz
@@ -684,6 +730,23 @@ function RirPicker({
       </View>
     </View>
   );
+}
+
+function actionLabel(action: string | null): string {
+  switch (action) {
+    case 'erhoehen':
+      return 'Vorschlag: mehr Gewicht';
+    case 'senken':
+      return 'Vorschlag: etwas leichter';
+    case 'halten':
+      return 'Vorschlag: Gewicht halten';
+    default:
+      return 'Vorschlag des Assistenten';
+  }
+}
+
+function actionIcon(action: string | null): IconName {
+  return action === 'erhoehen' ? 'arrowUp' : action === 'senken' ? 'arrowDown' : 'sparkle';
 }
 
 function IconButton({ icon, label, onPress, disabled, testID }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean; testID?: string }) {

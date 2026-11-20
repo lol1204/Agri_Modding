@@ -1,4 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { goHome } from '../navigation';
 import { useEffect, useRef } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/AppText';
@@ -46,7 +47,7 @@ export function SummaryScreen() {
 
   if (!workout || !workout.summary) {
     return (
-      <Screen title="Zusammenfassung" onBack={() => router.replace('/')}>
+      <Screen title="Zusammenfassung" onBack={() => goHome()}>
         <AppText color="textMuted">Keine Daten zu diesem Training.</AppText>
       </Screen>
     );
@@ -60,7 +61,7 @@ export function SummaryScreen() {
   );
 
   return (
-    <Screen footer={<Button title="Fertig" size="lg" onPress={() => router.replace('/')} testID="summary-fertig" />} testID="screen-zusammenfassung">
+    <Screen footer={<Button title="Fertig" size="lg" onPress={() => goHome()} testID="summary-fertig" />} testID="screen-zusammenfassung">
       <Animated.View
         style={[
           styles.hero,

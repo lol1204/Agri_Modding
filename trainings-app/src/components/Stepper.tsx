@@ -115,11 +115,11 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   btn: {
     borderRadius: radii.md,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.surfacePressed,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnPressed: { backgroundColor: colors.surfacePressed },
+  btnPressed: { backgroundColor: colors.border },
   center: { flex: 1, alignItems: 'center', minWidth: 64 },
   input: {
     color: colors.text,
