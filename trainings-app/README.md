@@ -116,12 +116,11 @@ Die Schritte A bis C machst du einmal am Computer, Schritt D auf dem iPhone. Ins
 
 ```bash
 npx firebase-tools login
-npx firebase-tools use --add
 npm run deploy
 ```
 
 1. `login` öffnet den Browser: Melde dich mit demselben Google-Konto an.
-2. `use --add`: Dein Projekt auswählen und als Alias `default` eingeben.
+2. Das Projekt (`improvefitness-49089`) ist in `.firebaserc` schon eingetragen. Bei einem anderen Projekt: `npx firebase-tools use --add`.
 3. `npm run deploy` baut die App und lädt drei Dinge zu Firebase hoch:
    - die App (Hosting),
    - die **Sicherheitsregeln**,
