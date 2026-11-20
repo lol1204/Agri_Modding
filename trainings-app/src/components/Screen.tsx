@@ -20,6 +20,8 @@ type ScreenProps = {
   /** Screens in den Tabs: Abstand unten übernimmt die Tab-Leiste. */
   inTabs?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  /** Scrollen vorübergehend sperren (z. B. während Drag & Drop). */
+  scrollEnabled?: boolean;
   testID?: string;
 };
 
@@ -37,6 +39,7 @@ export function Screen({
   scroll = true,
   inTabs = false,
   contentStyle,
+  scrollEnabled = true,
   testID,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
@@ -86,6 +89,7 @@ export function Screen({
           style={styles.flex}
           contentContainerStyle={{ paddingTop: insets.top + spacing.md, paddingBottom: footer ? spacing.lg : bottomPad }}
           keyboardShouldPersistTaps="handled"
+          scrollEnabled={scrollEnabled}
           showsVerticalScrollIndicator={false}
         >
           {inner}
