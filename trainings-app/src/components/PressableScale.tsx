@@ -3,6 +3,7 @@ import {
   Animated,
   Platform,
   Pressable,
+  StyleSheet,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
@@ -20,6 +21,46 @@ export type PressableScaleProps = Omit<PressableProps, 'style' | 'children'> & {
   children?: ReactNode;
 };
 
+// Diese Stilangaben bestimmen die Position im Eltern-Layout und gehören an den äußeren Container.
+const OUTER_KEYS = [
+  'flex',
+  'flexGrow',
+  'flexShrink',
+  'flexBasis',
+  'alignSelf',
+  'width',
+  'minWidth',
+  'maxWidth',
+  'margin',
+  'marginTop',
+  'marginBottom',
+  'marginLeft',
+  'marginRight',
+  'marginHorizontal',
+  'marginVertical',
+  'position',
+  'top',
+  'left',
+  'right',
+  'bottom',
+  'zIndex',
+] as const;
+
+function splitStyle(style: StyleProp<ViewStyle>): { outer: ViewStyle; inner: ViewStyle } {
+  const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(flat)) {
+    if ((OUTER_KEYS as readonly string[]).includes(k)) outer[k] = v;
+    else inner[k] = v;
+  }
+  // Füllt der äußere Container Platz (flex/Breite), soll der innere mitwachsen.
+  if (outer.flex !== undefined || outer.flexGrow !== undefined || outer.width !== undefined || outer.alignSelf === 'stretch') {
+    inner.flexGrow = 1;
+  }
+  return { outer: outer as ViewStyle, inner: inner as ViewStyle };
+}
+
 /**
  * Tippbare Fläche mit kurzer Druck-Animation (leichtes Eindrücken).
  * Grundlage für Buttons, Karten und Chips.
@@ -35,6 +76,7 @@ export function PressableScale({
   ...rest
 }: PressableScaleProps) {
   const scale = useRef(new Animated.Value(1)).current;
+  const { outer, inner } = splitStyle(style);
 
   const animate = (to: number) => {
     Animated.timing(scale, {
@@ -48,6 +90,7 @@ export function PressableScale({
     <Pressable
       {...rest}
       disabled={disabled}
+      style={outer}
       onPressIn={(e) => {
         animate(scaleTo);
         onPressIn?.(e);
@@ -58,9 +101,7 @@ export function PressableScale({
       }}
     >
       {({ pressed }) => (
-        <Animated.View
-          style={[style, pressed && pressedStyle, { transform: [{ scale }] }, disabled && { opacity: 0.45 }]}
-        >
+        <Animated.View style={[inner, pressed && pressedStyle, { transform: [{ scale }] }, disabled && { opacity: 0.45 }]}>
           {children}
         </Animated.View>
       )}

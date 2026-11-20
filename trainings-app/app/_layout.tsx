@@ -46,6 +46,8 @@ function AppNavigator() {
         <Stack.Screen name="eigene-uebung" />
         <Stack.Screen name="plan" />
         <Stack.Screen name="vorlagen" />
+        <Stack.Screen name="training" options={{ gestureEnabled: false, animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="zusammenfassung" options={{ gestureEnabled: false, animation: 'fade' }} />
       </Stack.Protected>
       <Stack.Protected guard={signedOut}>
         <Stack.Screen name="login" options={{ animation: 'fade' }} />

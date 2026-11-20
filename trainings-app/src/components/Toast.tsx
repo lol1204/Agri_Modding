@@ -21,6 +21,8 @@ type ToastContextValue = {
   hideToast: () => void;
   /** Abstand nach unten, z. B. damit der Toast über der Tab-Leiste liegt. */
   setBottomOffset: (offset: number) => void;
+  /** Oben anzeigen (z. B. im Training, damit die Eingabe frei bleibt). */
+  setPlacement: (placement: 'top' | 'bottom') => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -29,6 +31,7 @@ const useNativeDriver = Platform.OS !== 'web';
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [bottomOffset, setBottomOffset] = useState(0);
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
   const anim = useRef(new Animated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
@@ -54,20 +57,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  const value = useMemo(() => ({ showToast, hideToast, setBottomOffset }), [showToast, hideToast]);
+  const value = useMemo(() => ({ showToast, hideToast, setBottomOffset, setPlacement }), [showToast, hideToast]);
 
   return (
     <ToastContext.Provider value={value}>
       {children}
       {toast ? (
-        <View pointerEvents="box-none" style={[styles.host, { bottom: insets.bottom + bottomOffset + spacing.md }]}>
+        <View
+          pointerEvents="box-none"
+          style={[
+            styles.host,
+            placement === 'top' ? { top: insets.top + touch.largeTarget } : { bottom: insets.bottom + bottomOffset + spacing.md },
+          ]}
+        >
           <Animated.View
             accessibilityLiveRegion="polite"
             style={[
               styles.toast,
               {
                 opacity: anim,
-                transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+                transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [placement === 'top' ? -16 : 16, 0] }) }],
               },
             ]}
           >
