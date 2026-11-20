@@ -1,4 +1,4 @@
-import { createLocalRepositories, createMemoryStorage } from '@/db/local';
+import { createMemoryRepositories, createMemoryStorage } from './helpers/memoryRepositories';
 import { dataStore } from '@/db/store';
 import type { Plan, SetEntry, Workout } from '@/domain/types';
 import { createId } from '@/engine/ids';
@@ -11,10 +11,10 @@ const set = (id: string, workoutId: string, performedAt: number): SetEntry => ({
   id, uid: 'x', workoutId, itemId: 'i', exerciseId: 'e', type: 'work', weightKg: 60, reps: 10, rir: 2, painFlag: false, performedAt,
 });
 
-describe('Lokale Repositories', () => {
+describe('Repositories (Test-Speicher)', () => {
   it('speichert, meldet live und überlebt einen Neustart', () => {
     const storage = createMemoryStorage();
-    const repos = createLocalRepositories(storage);
+    const repos = createMemoryRepositories(storage);
     const seen: number[] = [];
     const unsub = repos.plans.watch((items) => seen.push(items.length));
     repos.plans.save(plan('a'));
@@ -23,14 +23,14 @@ describe('Lokale Repositories', () => {
     unsub();
     expect(seen).toEqual([0, 1, 2, 1]);
 
-    const again = createLocalRepositories(storage);
+    const again = createMemoryRepositories(storage);
     let items: Plan[] = [];
     again.plans.watch((p) => (items = p));
     expect(items.map((p) => p.id)).toEqual(['b']);
   });
 
   it('setzt die uid bei Sätzen und löscht Sätze mit dem Training', async () => {
-    const repos = createLocalRepositories(createMemoryStorage(), 'nutzer1');
+    const repos = createMemoryRepositories(createMemoryStorage(), 'nutzer1');
     repos.workouts.save(workout('w1', 1000));
     repos.sets.save(set('s1', 'w1', 1000));
     repos.sets.save(set('s2', 'w1', 2000));
@@ -40,7 +40,7 @@ describe('Lokale Repositories', () => {
   });
 
   it('liefert live nur Sätze im Zeitfenster', () => {
-    const repos = createLocalRepositories(createMemoryStorage());
+    const repos = createMemoryRepositories(createMemoryStorage());
     repos.sets.save(set('alt', 'w', 100));
     repos.sets.save(set('neu', 'w', 5000));
     let ids: string[] = [];
@@ -49,7 +49,7 @@ describe('Lokale Repositories', () => {
   });
 
   it('Profil wird zusammengeführt und kann gelöscht werden', async () => {
-    const repos = createLocalRepositories(createMemoryStorage());
+    const repos = createMemoryRepositories(createMemoryStorage());
     let profile: unknown = 'leer';
     repos.profile.watch((p) => (profile = p));
     expect(profile).toBeNull();
@@ -63,7 +63,7 @@ describe('Lokale Repositories', () => {
 
 describe('Zentraler Datenspeicher', () => {
   it('ist nach dem Verbinden sofort bereit und sortiert Trainings (neueste zuerst)', () => {
-    const repos = createLocalRepositories(createMemoryStorage());
+    const repos = createMemoryRepositories(createMemoryStorage());
     repos.workouts.save(workout('alt', 1000));
     repos.workouts.save(workout('neu', 5000));
     dataStore.attach(repos, 6000);

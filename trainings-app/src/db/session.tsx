@@ -1,29 +1,29 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { isFirebaseConfigured, getDb, loadFirestoreModule } from '@/integrations/firebase';
+import { getDb, isFirebaseConfigured, loadFirestoreModule } from '@/integrations/firebase';
 import { watchAuth, type AuthUser } from './auth';
 import { createFirestoreRepositories } from './firestore';
-import { createLocalRepositories } from './local';
 import { dataStore } from './store';
 
 export type Session =
   | { status: 'loading' }
+  /** Firebase-Werte fehlen (.env) – die App zeigt eine Einrichtungs-Hilfe. */
+  | { status: 'notConfigured' }
   | { status: 'signedOut' }
-  | { status: 'ready'; mode: 'local' | 'firebase'; user: AuthUser | null };
+  | { status: 'ready'; user: AuthUser };
 
 const SessionContext = createContext<Session>({ status: 'loading' });
 
 /**
- * Entscheidet beim Start: lokaler Modus (keine Firebase-Werte) oder Firebase
- * mit Login. Verbindet danach den zentralen Datenspeicher.
+ * Die App läuft komplett über Firebase: Login (Authentication) und Daten (Firestore).
+ * Nach dem Login wird der zentrale Datenspeicher mit Firestore verbunden.
  */
 export function SessionProvider({ children, onError }: { children: ReactNode; onError: (e: unknown) => void }) {
   const [session, setSession] = useState<Session>({ status: 'loading' });
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
-      dataStore.attach(createLocalRepositories());
-      setSession({ status: 'ready', mode: 'local', user: null });
-      return () => dataStore.detach();
+      setSession({ status: 'notConfigured' });
+      return;
     }
 
     let cancelled = false;
@@ -39,7 +39,7 @@ export function SessionProvider({ children, onError }: { children: ReactNode; on
         const [db, fs] = await Promise.all([getDb(), loadFirestoreModule()]);
         if (cancelled) return;
         dataStore.attach(createFirestoreRepositories(db, fs, user.uid, onError));
-        setSession({ status: 'ready', mode: 'firebase', user });
+        setSession({ status: 'ready', user });
       } catch (e) {
         onError(e);
       }

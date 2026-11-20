@@ -59,7 +59,6 @@ export function createFirestoreRepositories(
   }
 
   return {
-    mode: 'firebase',
     uid,
     profile: {
       watch: (cb) =>

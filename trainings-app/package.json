@@ -33,7 +33,9 @@
     "test": "jest",
     "check:theme": "node scripts/check-theme.mjs",
     "check": "npm run typecheck && npm run check:theme && npm test",
-    "deploy": "npm run build:web && npx firebase-tools deploy"
+    "deploy": "npm run build:web && npx firebase-tools deploy",
+    "emulators": "npx firebase-tools emulators:start --only auth,firestore --project demo-trainings",
+    "test:rules": "npx firebase-tools emulators:exec --only auth,firestore --project demo-trainings \"node scripts/test-rules.mjs\""
   },
   "private": true
 }

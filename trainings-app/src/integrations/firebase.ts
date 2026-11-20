@@ -18,9 +18,21 @@ const config: FirebaseOptions = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-/** Sind Firebase-Werte hinterlegt? Wenn nicht, läuft die App im lokalen Modus. */
+/** Sind Firebase-Werte hinterlegt? Ohne sie zeigt die App eine Einrichtungs-Hilfe. */
 export function isFirebaseConfigured(): boolean {
   return Boolean(config.apiKey && config.projectId && config.appId);
+}
+
+/**
+ * Projekt-IDs, die mit „demo-“ beginnen, laufen gegen die lokalen
+ * Firebase-Emulatoren (nur zum Entwickeln/Testen, siehe README).
+ */
+export function usesEmulator(): boolean {
+  return Boolean(config.projectId?.startsWith('demo-'));
+}
+
+function emulatorHost(): string {
+  return process.env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST || window.location.hostname || 'localhost';
 }
 
 function assertBrowser(): void {
@@ -50,11 +62,14 @@ export function loadFirestoreModule(): Promise<typeof import('firebase/firestore
 /** Firestore mit Offline-Cache im Browser (IndexedDB), auch über mehrere Tabs. */
 export function getDb(): Promise<Firestore> {
   dbPromise ??= Promise.all([getFirebaseApp(), loadFirestoreModule()]).then(
-    ([app, { initializeFirestore, persistentLocalCache, persistentMultipleTabManager }]) =>
-      initializeFirestore(app, {
+    ([app, { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator }]) => {
+      const db = initializeFirestore(app, {
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
         ignoreUndefinedProperties: true,
-      }),
+      });
+      if (usesEmulator()) connectFirestoreEmulator(db, emulatorHost(), 8080);
+      return db;
+    },
   );
   return dbPromise;
 }
@@ -67,11 +82,12 @@ export function loadAuthModule(): Promise<typeof import('firebase/auth')> {
 /** Firebase Authentication; der Login bleibt im Browser gespeichert (auch offline). */
 export function getFirebaseAuth(): Promise<Auth> {
   authPromise ??= Promise.all([getFirebaseApp(), loadAuthModule()]).then(
-    ([app, { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence }]) => {
+    ([app, { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, connectAuthEmulator }]) => {
       const auth = initializeAuth(app, {
         persistence: [indexedDBLocalPersistence, browserLocalPersistence],
       });
       auth.languageCode = 'de';
+      if (usesEmulator()) connectAuthEmulator(auth, `http://${emulatorHost()}:9099`, { disableWarnings: true });
       return auth;
     },
   );

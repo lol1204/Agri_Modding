@@ -21,6 +21,7 @@ export function TextField({ label, hint, error, style, multiline, ...rest }: Tex
         placeholderTextColor={colors.textFaint}
         selectionColor={colors.accent}
         multiline={multiline}
+        accessibilityLabel={label}
         {...rest}
         style={[styles.input, multiline && styles.multiline, error ? styles.inputError : null, style]}
       />

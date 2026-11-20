@@ -31,8 +31,7 @@ export function ProfileScreen() {
   const { profile } = useData();
   const session = useSession();
   const { showToast } = useToast();
-  const isLocal = session.status === 'ready' && session.mode === 'local';
-  const email = session.status === 'ready' ? session.user?.email : null;
+  const email = session.status === 'ready' ? session.user.email : null;
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [password, setPassword] = useState('');
@@ -44,14 +43,10 @@ export function ProfileScreen() {
     setDeleteError(null);
     try {
       const repos = dataStore.repos;
-      if (isLocal) {
-        await repos.deleteAllData();
-      } else {
-        await deleteAccount(password, () => repos.deleteAllData());
-      }
+      await deleteAccount(password, () => repos.deleteAllData());
       setConfirmDelete(false);
       setPassword('');
-      showToast({ message: isLocal ? 'Alle Daten auf diesem Gerät wurden gelöscht.' : 'Dein Konto wurde gelöscht.' });
+      showToast({ message: 'Dein Konto wurde gelöscht.' });
     } catch (e) {
       setDeleteError(authErrorMessage(e));
     } finally {
@@ -63,14 +58,12 @@ export function ProfileScreen() {
     <Screen title="Profil" inTabs testID="screen-profil">
       <Card style={styles.account}>
         <View style={styles.accountIcon}>
-          <Icon name={isLocal ? 'cloudOff' : 'profile'} size={24} color="accent" />
+          <Icon name="profile" size={24} color="accent" />
         </View>
         <View style={styles.flex}>
-          <AppText variant="bodyStrong">{isLocal ? 'Lokaler Modus' : (email ?? 'Angemeldet')}</AppText>
+          <AppText variant="bodyStrong">{email ?? 'Angemeldet'}</AppText>
           <AppText variant="small" color="textMuted">
-            {isLocal
-              ? 'Daten nur auf diesem Gerät. Mit Firebase-Konto werden sie zusätzlich in der Cloud gesichert.'
-              : 'Daten werden in deinem Konto gesichert und offline zwischengespeichert.'}
+            Deine Daten liegen in deinem Firebase-Konto (EU) und zusätzlich offline auf diesem Gerät.
           </AppText>
         </View>
       </Card>
@@ -128,10 +121,10 @@ export function ProfileScreen() {
         <AppText variant="small" color="textMuted">
           Kein Tracking, keine Analyse, keine Weitergabe. Deine Daten gehören dir.
         </AppText>
-        {!isLocal ? <ListRow icon="logout" title="Abmelden" onPress={() => void signOutUser()} /> : null}
+        <ListRow icon="logout" title="Abmelden" onPress={() => void signOutUser()} />
         <ListRow
           icon="trash"
-          title={isLocal ? 'Alle Daten löschen' : 'Konto und Daten löschen'}
+          title="Konto und Daten löschen"
           destructive
           onPress={() => setConfirmDelete(true)}
         />
@@ -139,12 +132,8 @@ export function ProfileScreen() {
 
       <ConfirmSheet
         visible={confirmDelete}
-        title={isLocal ? 'Alle Daten löschen?' : 'Konto wirklich löschen?'}
-        message={
-          isLocal
-            ? 'Alle Trainings, Pläne und Einstellungen auf diesem Gerät werden gelöscht. Das lässt sich nicht rückgängig machen.'
-            : 'Dein Konto und alle Trainingsdaten werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.'
-        }
+        title="Konto wirklich löschen?"
+        message="Dein Konto und alle Trainingsdaten werden endgültig gelöscht. Das lässt sich nicht rückgängig machen."
         confirmLabel={busy ? 'Lösche …' : 'Endgültig löschen'}
         destructive
         onConfirm={runDelete}
@@ -153,15 +142,13 @@ export function ProfileScreen() {
           setDeleteError(null);
         }}
       >
-        {!isLocal ? (
-          <TextField
-            label="Passwort zur Bestätigung"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="current-password"
-          />
-        ) : null}
+        <TextField
+          label="Passwort zur Bestätigung"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="current-password"
+        />
         {deleteError ? <AppText color="danger">{deleteError}</AppText> : null}
       </ConfirmSheet>
     </Screen>

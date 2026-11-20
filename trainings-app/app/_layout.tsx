@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ToastProvider, useToast } from '@/components/Toast';
 import { SessionProvider, useSession } from '@/db/session';
 import { useData } from '@/db/store';
+import { SetupScreen } from '@/features/auth/SetupScreen';
 import { registerServiceWorker } from '@/integrations/pwa';
 import { colors } from '@/theme';
 
@@ -29,6 +30,7 @@ function AppNavigator() {
   if (session.status === 'loading' || (signedIn && status !== 'ready')) {
     return <View style={styles.splash} />;
   }
+  if (session.status === 'notConfigured') return <SetupScreen />;
 
   return (
     <Stack

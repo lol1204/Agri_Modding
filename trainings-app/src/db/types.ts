@@ -12,7 +12,6 @@ export type ErrorHandler = (error: unknown) => void;
  *   der Abgleich mit der Cloud passiert im Hintergrund (auch später, wenn wieder Netz da ist).
  */
 export interface Repositories {
-  readonly mode: 'local' | 'firebase';
   readonly uid: string;
 
   profile: {

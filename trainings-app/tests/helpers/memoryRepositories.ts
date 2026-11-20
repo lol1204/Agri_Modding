@@ -1,10 +1,9 @@
 import type { Checkin, Exercise, Pause, Plan, SetEntry, UserProfile, Workout } from '@/domain/types';
-import type { Repositories, Unsubscribe } from './types';
+import type { Repositories, Unsubscribe } from '@/db/types';
 
 /**
- * Lokaler Speicher (ohne Firebase): Daten liegen nur auf diesem Gerät
- * im Browser (localStorage). Gleiche Schnittstelle wie Firestore –
- * wird im lokalen Modus und in den Tests genutzt.
+ * Nur für Tests: Speicher im Arbeitsspeicher mit derselben Schnittstelle wie
+ * Firestore. Die App selbst nutzt ausschließlich Firebase (src/db/firestore.ts).
  */
 
 export interface KeyValueStorage {
@@ -21,20 +20,6 @@ export function createMemoryStorage(): KeyValueStorage {
     setItem: (k, v) => void map.set(k, v),
     removeItem: (k) => void map.delete(k),
   };
-}
-
-export function browserStorage(): KeyValueStorage {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const probe = '__probe__';
-      window.localStorage.setItem(probe, '1');
-      window.localStorage.removeItem(probe);
-      return window.localStorage;
-    }
-  } catch {
-    // z. B. privater Modus – dann nur im Arbeitsspeicher
-  }
-  return createMemoryStorage();
 }
 
 type Listener<T> = (value: T) => void;
@@ -110,7 +95,7 @@ function structuredCloneSafe<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export function createLocalRepositories(storage: KeyValueStorage = browserStorage(), uid = 'local'): Repositories {
+export function createMemoryRepositories(storage: KeyValueStorage = createMemoryStorage(), uid = 'test-nutzer'): Repositories {
   const prefix = `trainings-app:v1:${uid}:`;
   const exercises = new LocalCollection<Exercise>(storage, prefix + 'exercises');
   const plans = new LocalCollection<Plan>(storage, prefix + 'plans');
@@ -130,7 +115,6 @@ export function createLocalRepositories(storage: KeyValueStorage = browserStorag
   const profileListeners = new Set<Listener<UserProfile | null>>();
 
   return {
-    mode: 'local',
     uid,
     profile: {
       watch(cb) {

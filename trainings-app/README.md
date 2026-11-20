@@ -5,7 +5,15 @@ Ein schneller Trainingslogger fürs iPhone mit virtuellem Personaltrainer:
 - Er schlägt **pro Satz das Gewicht vor**.
 - Er zeigt deinen **Fortschritt** und lässt **Pausen ohne schlechtes Gewissen** zu.
 - Die App läuft als **Webclip** (PWA = Web-App mit eigenem Icon auf dem Home-Bildschirm).
-- Sie funktioniert **komplett offline** und nutzt Firebase im **kostenlosen Spark-Plan**.
+- Sie funktioniert **komplett offline**.
+
+**Die App läuft komplett über Google Firebase** (kostenloser Spark-Plan, ohne Zahlungsdaten):
+
+| Firebase-Dienst | Wofür |
+| --- | --- |
+| **Authentication** | Login mit E-Mail und Passwort |
+| **Cloud Firestore** | Alle Daten (Pläne, Trainings, Sätze), EU-Standort, mit Offline-Speicher im Browser |
+| **Hosting** | Die Web-Adresse, unter der die App läuft (`https://<projekt-id>.web.app`) |
 
 ---
 
@@ -14,7 +22,7 @@ Ein schneller Trainingslogger fürs iPhone mit virtuellem Personaltrainer:
 | Bereich | Inhalt |
 | --- | --- |
 | **Grundgerüst** | Expo SDK 58, 5 Tabs (Heute, Pläne, Fortschritt, Coach, Profil), Dark Mode mit Mint-Akzent, Service Worker für den Offline-Betrieb |
-| **Login & Daten** | E-Mail/Passwort, Firestore mit Offline-Speicher, Repositories, Konto + Daten löschen. Ohne Firebase-Werte läuft die App im **lokalen Modus**. |
+| **Login & Daten** | E-Mail/Passwort, Firestore mit Offline-Speicher, Repositories, Konto + Daten löschen, Sicherheitsregeln mit Tests |
 | **Übungsbibliothek** | 72 Übungen (Gym + Calisthenics) mit Technik-Tipps, Filtern, Favoriten, eigenen Übungen, Alternativen und Progressionen |
 | **Pläne** | Vorlagen (Ganzkörper, Upper/Lower, Push/Pull/Legs, Gym A/B/C, Calisthenics), Plan-Editor mit Drag & Drop und Supersätzen |
 | **Live-Training** | Ein Satz in 2 Taps, Pausentimer als Ring, Dropsätze mit Scheibenrechner, Rückgängig, Übung tauschen, Zeitbudget, Fortsetzen nach Neustart |
@@ -31,64 +39,80 @@ Ein schneller Trainingslogger fürs iPhone mit virtuellem Personaltrainer:
 
 ---
 
-## Schritt für Schritt aufs iPhone
+## Schritt für Schritt: Firebase einrichten und aufs iPhone
 
-### 1. Voraussetzungen (einmalig, auf deinem Computer)
+Die Schritte A bis C machst du einmal am Computer, Schritt D auf dem iPhone. Insgesamt dauert das etwa 20 Minuten.
 
-- **Node.js** in der LTS-Version (Version 20 oder neuer) von https://nodejs.org installieren.
-- **Git** installieren, falls noch nicht vorhanden.
+### A. Firebase-Projekt anlegen (im Browser)
 
-### 2. Code holen und Pakete installieren
+1. **Projekt erstellen**
+   - Öffne https://console.firebase.google.com und melde dich mit deinem Google-Konto an.
+   - Klicke **„Projekt erstellen“** (bzw. „Projekt hinzufügen“).
+   - Als Name z. B. `trainings-app` eingeben. Firebase hängt automatisch eine Nummer an, daraus wird deine **Projekt-ID**.
+   - **Google Analytics: ausschalten.** Die App kommt ohne Tracking aus.
+   - Klicke „Projekt erstellen“ und warte kurz.
+   - Du bist automatisch im kostenlosen **Spark-Plan**. Du musst keine Zahlungsdaten eingeben und solltest auch nicht auf „Upgrade“ klicken.
 
-```bash
-git clone https://github.com/lol1204/Agri_Modding.git
-cd Agri_Modding
-git checkout claude/fitness-app-plan-gwznll
-cd trainings-app
-npm install
-```
+2. **Login aktivieren**
+   - Links im Menü: **Erstellen → Authentication → „Jetzt starten“**.
+   - Im Reiter **„Anmeldemethode“** wählst du **„E-Mail-Adresse/Passwort“**.
+   - Den ersten Schalter auf **Aktivieren** stellen und **Speichern**. Den Link per E-Mail ohne Passwort brauchst du nicht.
 
-### 3. Kurz im Browser ausprobieren (optional)
+3. **Datenbank anlegen**
+   - Links: **Erstellen → Firestore Database → „Datenbank erstellen“**.
+   - Edition und ID unverändert lassen (Standard).
+   - Als **Standort** einen **EU-Standort** wählen, z. B. `eur3 (Europe)` oder `europe-west3 (Frankfurt)`. Den Standort kannst du später nicht mehr ändern.
+   - **„Im Produktionsmodus starten“** wählen. Die passenden Sicherheitsregeln liefert die App selbst mit.
 
-```bash
-npm run web
-```
+4. **Web-App registrieren**
+   - Klicke oben links auf das **Zahnrad → Projekteinstellungen**.
+   - Unten bei „Deine Apps“ das Symbol **`</>` (Web)** anklicken.
+   - Spitzname z. B. `Trainings-App` eingeben. **Firebase Hosting hier nicht anhaken**, das erledigt Schritt C.
+   - Klicke **„App registrieren“**. Firebase zeigt jetzt einen Codeblock mit `firebaseConfig = { apiKey: "...", ... }`. Lass diese Seite offen.
 
-Dann im Browser `http://localhost:8081` öffnen. Ohne `.env` läuft die App im **lokalen Modus**: Die Daten liegen nur in diesem Browser, und du musst dich nicht anmelden.
+### B. App auf deinem Computer vorbereiten
 
-### 4. Firebase-Projekt anlegen (kostenlos, ohne Zahlungsdaten)
+1. **Node.js** in der LTS-Version (20 oder neuer) von https://nodejs.org installieren, dazu **Git**.
+2. Code holen und Pakete installieren:
 
-1. Öffne https://console.firebase.google.com und wähle **Projekt hinzufügen**.
-   - Name, z. B. `trainings-app`.
-   - **Google Analytics ausschalten**, denn die App kommt ohne Tracking aus.
-2. Login einrichten: **Build → Authentication → Jetzt starten**.
-   - Unter Anmeldeanbieter **E-Mail/Passwort** aktivieren.
-3. Datenbank einrichten: **Build → Firestore Database → Datenbank erstellen**.
-   - Als Standort einen **EU-Standort** wählen, z. B. `eur3 (Europe)` oder `europe-west3 (Frankfurt)`.
-   - **Produktionsmodus** wählen. Die passenden Regeln liefert die App selbst mit.
-4. Web-App anlegen: **Projektübersicht → Symbol `</>` (Web-App hinzufügen)**.
-   - Einen Namen vergeben.
-   - Den angezeigten `firebaseConfig`-Block offen lassen, du brauchst ihn im nächsten Schritt.
-5. Im Ordner `trainings-app` die Vorlage kopieren:
+   ```bash
+   git clone https://github.com/lol1204/Agri_Modding.git
+   cd Agri_Modding
+   git checkout claude/fitness-app-plan-gwznll
+   cd trainings-app
+   npm install
+   ```
+
+3. Datei `.env` anlegen:
 
    ```bash
    cp .env.example .env
    ```
 
-   Dann in `.env` die Werte aus `firebaseConfig` eintragen:
+   Unter Windows (PowerShell) heißt der Befehl `copy .env.example .env`.
 
-   ```
-   EXPO_PUBLIC_FIREBASE_API_KEY=…
-   EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=…
-   EXPO_PUBLIC_FIREBASE_PROJECT_ID=…
-   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=…
-   EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=…
-   EXPO_PUBLIC_FIREBASE_APP_ID=…
-   ```
+4. `.env` in einem Texteditor öffnen und die Werte aus dem `firebaseConfig`-Block eintragen, ohne Anführungszeichen:
+
+   | In `firebaseConfig` | In `.env` |
+   | --- | --- |
+   | `apiKey` | `EXPO_PUBLIC_FIREBASE_API_KEY` |
+   | `authDomain` | `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` |
+   | `projectId` | `EXPO_PUBLIC_FIREBASE_PROJECT_ID` |
+   | `storageBucket` | `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` |
+   | `messagingSenderId` | `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` |
+   | `appId` | `EXPO_PUBLIC_FIREBASE_APP_ID` |
 
    Diese Werte sind nicht geheim, weil sie ohnehin im Browser landen. Deine Daten schützen die Firestore-Regeln: Jeder Nutzer sieht nur seine eigenen Daten.
 
-### 5. Veröffentlichen (Firebase Hosting)
+5. Optional kurz am Computer testen:
+
+   ```bash
+   npm run web
+   ```
+
+   Dann `http://localhost:8081` öffnen, ein Konto anlegen und ein Training starten.
+
+### C. Veröffentlichen (Firebase Hosting)
 
 ```bash
 npx firebase-tools login
@@ -96,19 +120,27 @@ npx firebase-tools use --add
 npm run deploy
 ```
 
-- Bei `use --add` wählst du dein Projekt aus und gibst als Alias `default` an.
-- `npm run deploy` baut die App und lädt **Hosting, Firestore-Regeln und Indizes** hoch.
-- Danach ist die App unter `https://<deine-projekt-id>.web.app` erreichbar.
+1. `login` öffnet den Browser: Melde dich mit demselben Google-Konto an.
+2. `use --add`: Dein Projekt auswählen und als Alias `default` eingeben.
+3. `npm run deploy` baut die App und lädt drei Dinge zu Firebase hoch:
+   - die App (Hosting),
+   - die **Sicherheitsregeln**,
+   - den **Datenbank-Index**.
+4. Am Ende steht die Adresse da, z. B. `Hosting URL: https://trainings-app-1234.web.app`.
 
-### 6. Aufs iPhone holen
+Der Index wird nach dem ersten Deploy ein paar Minuten lang aufgebaut. Erscheint in dieser Zeit „Synchronisierung hakt“, einfach kurz warten.
 
-1. Öffne die Adresse in **Safari** (nicht in Chrome).
-2. Tippe auf **Teilen**, dann **Zum Home-Bildschirm**, dann **Hinzufügen**.
-3. Öffne die App **über das neue Icon** und lege dein Konto an.
+### D. Aufs iPhone holen
+
+1. Öffne die Hosting-URL in **Safari** (nicht in Chrome).
+2. Tippe auf **Teilen**, dann **„Zum Home-Bildschirm“**, dann **Hinzufügen**.
+3. Öffne die App **über das neue Icon** und lege dort dein Konto an. Dafür brauchst du einmal Internet.
 4. Schließe die App einmal komplett und öffne sie wieder. Jetzt ist alles für den Offline-Betrieb gespeichert.
-5. Test: Flugmodus an, App öffnen, Training starten und einen Satz loggen. Sobald du wieder Netz hast, gleicht sich alles automatisch ab.
+5. Test: Flugmodus an, App öffnen, Training starten und einen Satz loggen. Mit Netz gleicht sich alles automatisch mit Firebase ab.
 
 **Updates:** Nach Änderungen einfach erneut `npm run deploy` ausführen. In der App erscheint dann „Update bereit – Neu laden“.
+
+**Kosten:** Der Spark-Plan ist kostenlos und hat feste Grenzen. Für eine Person reicht das locker, zum Beispiel mit 50.000 Lesevorgängen und 20.000 Schreibvorgängen pro Tag. Wird eine Grenze erreicht, stoppt Firebase den Dienst nur bis zum nächsten Tag. Es entstehen keine Kosten.
 
 ---
 
@@ -118,8 +150,19 @@ npm run deploy
 npm run web          # Entwicklungsserver
 npm run check        # TypeScript (strict) + Theme-Check + Unit-Tests
 npm test             # nur die Unit-Tests (Jest)
+npm run test:rules   # Firestore-Sicherheitsregeln gegen die Firebase-Emulatoren testen (braucht Java)
+npm run emulators    # Auth- und Firestore-Emulator lokal starten
 npm run build:web    # statischer Export nach dist/ inkl. Service Worker
+npm run deploy       # bauen + auf Firebase veröffentlichen
 ```
+
+**Ohne echtes Projekt entwickeln:**
+
+1. In `.env` als Projekt-ID `demo-trainings` eintragen.
+2. Für `apiKey` und `appId` beliebige Werte eintragen, z. B. `demo-key` und `demo-app`.
+3. `npm run emulators` starten.
+
+Die App spricht dann nur mit den lokalen Firebase-Emulatoren.
 
 ### Ordner
 
@@ -129,12 +172,15 @@ src/theme/           Farben, Abstände, Textstile – die einzige Stelle mit Far
 src/components/      Basis-Komponenten (Screen, Card, Button, Stepper, Sheet, Charts …)
 src/domain/          Datentypen, deutsche Bezeichnungen, Standardwerte
 src/engine/          Reine Logik mit Unit-Tests (Gewichtsassistent, Session, Fortschritt …)
-src/db/              Repositories (Firestore + lokal), zentraler Datenspeicher, Aktionen
-src/integrations/    Firebase (lazy), Service Worker, Wake Lock
+src/db/              Firestore-Repositories, Login, zentraler Datenspeicher, Aktionen
+src/integrations/    Firebase-Start (lazy), Service Worker, Wake Lock
 src/features/        Screens je Bereich
 data/exercises.json  Startdaten der Übungsbibliothek
 public/              manifest.json, sw.js (Vorlage), Icons
-tests/               Jest-Tests
+scripts/             Build-Hilfen und Regel-Test
+tests/               Jest-Tests (inkl. Test-Speicher für die Repositories)
+firebase.json        Hosting, Regeln, Indizes, Emulatoren
+firestore.rules      Sicherheitsregeln (nur eigene Daten)
 ```
 
 ### Regeln im Code
@@ -163,14 +209,18 @@ tests/               Jest-Tests
 
 **Nicht im Webclip verfügbar:** Apple Health und Haptik. Der Pausen-Ton ist optional und funktioniert nur, solange die App offen ist.
 
-**Getrennter Speicher:** Safari und das Home-Bildschirm-Icon haben jeweils einen eigenen Speicher. Starte die App deshalb immer über das Icon. Mit Login liegen die Daten ohnehin in der Cloud.
+**Getrennter Speicher:** Safari und das Home-Bildschirm-Icon haben jeweils einen eigenen Speicher. Starte die App deshalb immer über das Icon. Die Daten liegen ohnehin in Firebase.
 
-**Was getestet ist:** Die App wurde automatisiert in Chromium mit iPhone-Bildschirmgröße geprüft:
+**Was getestet ist:** Automatisiert in Chromium mit iPhone-Bildschirmgröße, gegen die offiziellen Firebase-Emulatoren:
 
-- Plan anlegen, Training, Rückgängig, Dropsatz, Rekorde, Fortschritt
-- Offline-Start und Loggen im Flugmodus
+- Registrieren und Anmelden
+- Training und Offline-Loggen
+- Offline neu starten
+- Abgleich auf einem zweiten Gerät
+- Konto löschen
+- Sicherheitsregeln (15 Prüfungen)
 
 **Was noch nicht getestet ist:**
 
 - **Echtes Safari/iPhone:** Konnte ich nicht prüfen. Bitte einmal selbst auf dem iPhone testen.
-- **Login und Firestore mit deinem Firebase-Projekt:** Ebenfalls noch nicht gegen den echten Server getestet.
+- **Dein echtes Firebase-Projekt:** Ebenfalls noch nicht ausprobiert.
