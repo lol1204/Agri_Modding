@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Nur der angemeldete Nutzer darf seine eigenen Daten lesen und schreiben.
+// Alles, was hier nicht ausdrücklich erlaubt ist, ist gesperrt.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      // Profil
+      allow read, write: if isOwner(userId);
+
+      match /exercises/{id} { allow read, write: if isOwner(userId); }
+      match /plans/{id}     { allow read, write: if isOwner(userId); }
+      match /checkins/{id}  { allow read, write: if isOwner(userId); }
+      match /pauses/{id}    { allow read, write: if isOwner(userId); }
+
+      match /workouts/{workoutId} {
+        allow read, write: if isOwner(userId);
+
+        // Sätze tragen zusätzlich die uid (für die Sammelabfrage unten).
+        match /sets/{setId} {
+          allow read, delete: if isOwner(userId);
+          allow create, update: if isOwner(userId) && request.resource.data.uid == userId;
+        }
+      }
+    }
+
+    // Sammelabfrage über alle Sätze: nur eigene Sätze sind lesbar.
+    match /{path=**}/sets/{setId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Trainings-App",
+    "slug": "trainings-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "trainingsapp",
+    "userInterfaceStyle": "dark",
+    "web": {
+      "output": "static",
+      "bundler": "metro",
+      "favicon": "./public/icons/favicon-32.png",
+      "name": "Trainings-App",
+      "shortName": "Training",
+      "lang": "de",
+      "display": "standalone"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
